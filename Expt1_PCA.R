@@ -6,6 +6,8 @@ BiocManager::install("phyloseq")
 
 install.packages("Polychrome")
 
+physeq <- readRDS("physeq.rds")
+
 
 library(phyloseq)
 library(ggplot2)
@@ -52,27 +54,6 @@ samples_df <- samples_df |>
     TRUE ~ NA_character_
   ))
 
-# samples_df <- dplyr::left_join(samples_df, exp1_data, by = c("syn_com", "rep"))
-# samples_df <- dplyr::left_join(samples_df, exp1_data, by = c("syn_com", "rep"))
-# samples_df <- samples_df %>%
-#   dplyr::mutate(lineage = stringr::str_extract(treatment_plot, "ancestral|derived"))
-
-
-
-# Define columns to fill
-# columns_to_fill <- c("round_num", "other_host_source", "distance_from_lemna", "percent_other",
-#                      "title_of_graph", "start_area", "end_area", "daysinround", "RGR", "divergence_times_ma")
-# 
-# # Fill only rows where lineage == "ancestral"
-# samples_df<- samples_df %>%
-#   group_by(syn_com) %>%
-#   mutate(across(all_of(columns_to_fill), ~ ifelse(lineage == "ancestral" & is.na(.), 
-#                                                   first(na.omit(.)), .))) %>%
-#   ungroup()
-
-
-#save sample_df
-# write.csv(samples_df, "C:/Users/Ciana/OneDrive - USNH/Desktop/mac-files/R/16s_experimental_evolution/samples_df.csv", row.names = FALSE)
 # Data Filtering Section ----------------------------------------------------
 
 samples_df_filtered <- samples_df |> 
@@ -90,17 +71,6 @@ otu_mat_145_subset_filtered <- otu_mat_145_subset[rowSums(otu_mat_145_subset) > 
 tax_mat_filtered <- tax_mat[rownames(tax_mat) %in% rownames(otu_mat_subset_filtered), ]
 tax_mat_145_filtered <- tax_mat_145[rownames(tax_mat_145) %in% rownames(otu_mat_145_subset_filtered), ]
 
-
-# Filter out specific taxa
-# tax_mat_filtered <- tax_mat_filtered[!(
-#     (tax_mat_filtered[, "Kingdom"] == "Bacteria" & 
-#          tax_mat_filtered[, "Phylum"] == "Cyanobacteriota" & 
-#          tax_mat_filtered[, "Class"] == "Chloroplast" & 
-#          tax_mat_filtered[, "Order"] == "Chloroplast" & 
-#          is.na(tax_mat_filtered[, "Family"])) | 
-#         is.na(tax_mat_filtered[, "Family"]) |
-#         tax_mat_filtered[, "Class"] == "Mitochondria"
-# ), ]
 
 # Ensure unique taxa names
 rownames(tax_mat_filtered) <- make.unique(rownames(tax_mat_filtered))
@@ -148,10 +118,6 @@ keep_taxa_145 <- keep_taxa_145[!is.na(keep_taxa_145)]
 
 otu_mat_filtered_counts <- otu_mat_final[keep_taxa, ]
 otu_mat_145_filtered_counts <- otu_mat_145_final[keep_taxa_145, ]
-# # Which taxa in keep_taxa are NOT in otu_mat_final?
-# missing_taxa <- setdiff(keep_taxa, rownames(otu_mat_final))
-# length(missing_taxa)  # How many are missing?
-# missing_taxa          # View the actual missing taxa
 
 
 # Filter taxonomy again based on newly calculated rel abundance in the OTU matrix
