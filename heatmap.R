@@ -5,6 +5,14 @@ library(vegan)
 library(ggplot2)
 library(cowplot)
 library(pheatmap)
+library(scales)
+
+physeq <- readRDS("C:/Users/Ciana/OneDrive - USNH/Desktop/mac-files/R/16s_experimental_evolution/phylogeny-data-analysis/physeq.rds")
+
+# Remove samples with NA in relevant metadata fields
+sample_data_df <- as.data.frame(sample_data(physeq))
+valid_samples <- complete.cases(sample_data_df$title_of_graph, sample_data_df$treatment_plot)
+physeq <- prune_samples(valid_samples, physeq)
 
 # Compute Bray-Curtis distance matrix
 bray_dist <- distance(physeq, method = "bray")
@@ -13,58 +21,41 @@ braymat <- as.matrix(bray_dist)
 # Define color palette
 palette <- colorRampPalette(brewer.pal(9, "YlGnBu"))(100)
 
-# --------- Option 1: Corrected Base R Image Plot ---------
-# Plot the transposed matrix and reverse y-axis for correct orientation
-image(1:nrow(braymat), 1:ncol(braymat), t(braymat)[, nrow(braymat):1],
-      col = palette, xaxt = 'n', yaxt = 'n', main = "Bray-Curtis Distance Matrix")
 
-# Add axis labels
-axis(1, at = 1:ncol(braymat), labels = colnames(braymat), las = 2, cex.axis = 0.7)
-axis(2, at = 1:nrow(braymat), labels = rev(rownames(braymat)), las = 2, cex.axis = 0.7)
+## --- pull the two different sample‑level variables --------------------------
+titles          <- as.character(sample_data(physeq)$other_host_source)   # for colours
+treat_labels    <- as.character(sample_data(physeq)$treatment_plot)   # for axis text
+names(titles)   <- names(treat_labels) <- sample_names(physeq)
 
-# Add color legend
-legend("topright", 
-       legend = round(seq(min(braymat), max(braymat), length.out = 5), 2),
-       fill = palette[seq(1, 100, length.out = 5)],
-       title = "Bray-Curtis",
-       cex = 0.8)
+## --- arrange everything in the order of the distance matrix -----------------
+ordered_titles  <- titles[rownames(braymat)]
+ordered_labels  <- treat_labels[rownames(braymat)]
 
-# --------- Option 2: Cleaner Heatmap with Clustering using pheatmap ---------
-pheatmap(braymat,
-         color = palette,
-         clustering_distance_rows = bray_dist,
-         clustering_distance_cols = bray_dist,
-         main = "Bray-Curtis Distance Matrix (Clustered)",
-         fontsize = 8,
-         angle_col = 45)
+annotation_df   <- data.frame(Title = ordered_titles)
+rownames(annotation_df) <- rownames(braymat)
 
+## --- pick one distinct colour per title_of_graph ---------------------------
+title_levels <- unique(ordered_titles)
+title_colors <- scales::hue_pal()(length(title_levels))   # scales::hue_pal
+names(title_colors) <- title_levels
+ann_colors   <- list(Title = title_colors)
 
+## --- draw the heat‑map ------------------------------------------------------
+hm <- pheatmap(
+  braymat,
+  color                   = palette,
+  clustering_distance_rows = bray_dist,
+  clustering_distance_cols = bray_dist,
+  main  = "Bray‑Curtis Distance Matrix (Clustered)",
+  labels_row      = ordered_labels,        # text = treatment_plot
+  labels_col      = ordered_labels,
+  annotation_row  = annotation_df,         # colors = title_of_graph
+  annotation_col  = annotation_df,
+  annotation_colors = ann_colors,
+  fontsize = 20,
+  angle_col = 45
+)
 
-
-# trying to use the treatment_plot labels so it's more accurate
-# Extract treatment labels
-sample_labels <- as.character(sample_data(physeq)$treatment_plot)
-names(sample_labels) <- sample_names(physeq)  # Ensure correct mapping
-
-# Reorder the labels to match matrix order
-ordered_labels <- sample_labels[rownames(braymat)]
-
-# Plot with treatment labels
-hm <-pheatmap(braymat,
-         color = palette,
-         clustering_distance_rows = bray_dist,
-         clustering_distance_cols = bray_dist,
-         main = "Bray-Curtis Distance Matrix (Clustered)",
-         labels_row = ordered_labels,
-         labels_col = ordered_labels,
-         fontsize = 7,
-         angle_col = 45)
-
-# for this figure -  I need to change:
-# sort based on phylogenetic distance then by 50% or 75% - then can not have derived-x-x in the labels
-
-# Save the heatmap to a file
-ggsave("C:/Users/Ciana/OneDrive - USNH/Desktop/mac-files/R/16s_experimental_evolution/outputs/bray_curtis_heatmap.png", width = 8, height = 5, dpi = 300, plot=hm)
-
-
+ggsave("C:/Users/Ciana/OneDrive - USNH/Desktop/mac-files/R/16s_experimental_evolution/outputs/bray_curtis_heatmap_hostsource.png", 
+       width = 40, height = 50, dpi = 300, plot = hm, bg = "white", limitsize = FALSE)
 
